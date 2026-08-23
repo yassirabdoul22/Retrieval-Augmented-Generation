@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Pipeline Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600;650&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f5f0;
+    --panel:#ffffff;
+    --ink:#1c1b19;
+    --sub:#5b574e;
+    --line:#d8d3c6;
+    --accent:#b5541e;
+    --accent-soft:#f0dcc9;
+    --lexical:#2f5d55;
+    --lexical-soft:#dfeae6;
+    --bonus:#8a6d1f;
+    --bonus-soft:#f2e7c8;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15130f;
+      --panel:#1e1b16;
+      --ink:#efe9dd;
+      --sub:#a89f8d;
+      --line:#3a3529;
+      --accent:#e08a4f;
+      --accent-soft:#3a2a1c;
+      --lexical:#7cb8ab;
+      --lexical-soft:#1c2e29;
+      --bonus:#d9b64d;
+      --bonus-soft:#332a14;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    padding:clamp(20px,5vw,64px);
+  }
+  .page{ max-width:1180px; margin:0 auto; }
+
+  header{ margin-bottom:34px; }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:var(--sans);
+    font-weight:650;
+    font-size:clamp(28px,4vw,40px);
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    margin:0 0 10px;
+    text-wrap:balance;
+  }
+  .dek{
+    max-width:62ch;
+    color:var(--sub);
+    font-size:15.5px;
+    line-height:1.55;
+    margin:0;
+  }
+
+  .diagram-wrap{
+    overflow-x:auto;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+    padding:clamp(16px,3vw,36px);
+    margin-bottom:40px;
+  }
+  svg{ display:block; min-width:920px; width:100%; height:auto; font-family:var(--sans); }
+
+  .lane-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    fill:var(--sub);
+  }
+  .box-title{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:14.5px;
+    fill:var(--ink);
+  }
+  .box-sub{
+    font-family:var(--mono);
+    font-size:11px;
+    fill:var(--sub);
+  }
+  .box-tag{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .arrow{ stroke:var(--sub); stroke-width:1.6; fill:none; }
+  .arrow-head{ fill:var(--sub); }
+  .lane-divider{ stroke:var(--line); stroke-width:1; stroke-dasharray:2 4; }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+    margin-top:6px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--sub);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:8px; }
+  .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+  .notes{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:20px;
+    margin-top:8px;
+  }
+  .note{
+    border-top:2px solid var(--line);
+    padding-top:12px;
+  }
+  .note h3{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 8px;
+  }
+  .note p{
+    margin:0;
+    color:var(--sub);
+    font-size:13.5px;
+    line-height:1.55;
+  }
+  .note code{
+    font-family:var(--mono);
+    font-size:12.5px;
+    background:var(--accent-soft);
+    color:var(--ink);
+    padding:1px 5px;
+    border-radius:4px;
+  }
+
+  footer{
+    margin-top:44px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--sub);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="eyebrow">RAG against the machine — v2.0</p>
+    <h1>Naive RAG pipeline, with room for the bonus layer</h1>
+    <p class="dek">Four mandatory stages run left to right on the vLLM 0.10.1 corpus. The dashed track underneath is optional: semantic embeddings and hybrid fusion slot in without touching the lexical path.</p>
+  </header>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 1500 620" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- lane labels -->
+      <text x="0" y="34" class="lane-label">01 — Indexing (mandatory)</text>
+      <text x="0" y="278" class="lane-label">02 — Retrieval + Generation (mandatory)</text>
+      <text x="0" y="470" class="lane-label" fill="#8a6d1f">Bonus track — semantic + hybrid</text>
+
+      <line x1="0" y1="255" x2="1500" y2="255" class="lane-divider"/>
+      <line x1="0" y1="440" x2="1500" y2="440" class="lane-divider"/>
+
+      <!-- ===== INDEXING LANE ===== -->
+      <!-- Corpus -->
+      <rect x="0" y="50" width="190" height="82" rx="8" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+      <text x="18" y="80" class="box-title">data/raw/</text>
+      <text x="18" y="100" class="box-sub">vllm-0.10.1/*.py, *.md</text>
+      <text x="18" y="118" class="box-sub">the corpus, as text</text>
+
+      <!-- arrow -->
+      <path d="M190 91 H244" class="arrow"/>
+      <polygon points="244,91 234,86 234,96" class="arrow-head"/>
+
+      <!-- Chunking -->
+      <rect x="248" y="42" width="230" height="98" rx="8" fill="var(--lexical-soft)" stroke="var(--lexical)" stroke-width="1.4"/>
+      <text x="266" y="70" class="box-title">Chunking</text>
+      <text x="266" y="90" class="box-sub">code-aware splitter (.py)</text>
+      <text x="266" y="106" class="box-sub">prose splitter (.md)</text>
+      <text x="266" y="122" class="box-sub">≤ --max_chunk_size (2000)</text>
+
+      <path d="M478 91 H532" class="arrow"/>
+      <polygon points="532,91 522,86 522,96" class="arrow-head"/>
+
+      <!-- Index -->
+      <rect x="536" y="42" width="230" height="98" rx="8" fill="var(--lexical-soft)" stroke="var(--lexical)" stroke-width="1.4"/>
+      <text x="554" y="70" class="box-title">Lexical index</text>
+      <text x="554" y="90" class="box-sub">BM25 or TF-IDF</text>
+      <text x="554" y="106" class="box-sub">persisted under</text>
+      <text x="554" y="122" class="box-sub">data/processed/</text>
+
+      <!-- vertical connector down to retrieval -->
+      <path d="M651 140 V232" class="arrow"/>
+      <polygon points="651,232 646,222 656,222" class="arrow-head"/>
+
+      <!-- ===== RETRIEVAL + GENERATION LANE ===== -->
+      <!-- Query -->
+      <rect x="0" y="270" width="190" height="82" rx="8" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+      <text x="18" y="300" class="box-title">Question</text>
+      <text x="18" y="320" class="box-sub">single query or</text>
+      <text x="18" y="336" class="box-sub">dataset (JSON)</text>
+
+      <path d="M190 311 H244" class="arrow"/>
+      <polygon points="244,311 234,306 234,316" class="arrow-head"/>
+
+      <!-- Retrieve -->
+      <rect x="248" y="262" width="230" height="98" rx="8" fill="var(--lexical-soft)" stroke="var(--lexical)" stroke-width="1.4"/>
+      <text x="266" y="290" class="box-title">Retrieve top-k</text>
+      <text x="266" y="310" class="box-sub">score vs. lexical index</text>
+      <text x="266" y="326" class="box-sub">→ MinimalSource[]</text>
+      <text x="266" y="342" class="box-sub">file_path + char span</text>
+
+      <path d="M478 311 H532" class="arrow"/>
+      <polygon points="532,311 522,306 522,316" class="arrow-head"/>
+
+      <!-- Augment -->
+      <rect x="536" y="262" width="210" height="98" rx="8" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+      <text x="554" y="290" class="box-title">Augment</text>
+      <text x="554" y="310" class="box-sub">assemble context</text>
+      <text x="554" y="326" class="box-sub">within token budget</text>
+
+      <path d="M746 311 H800" class="arrow"/>
+      <polygon points="800,311 790,306 790,316" class="arrow-head"/>
+
+      <!-- Generate -->
+      <rect x="804" y="262" width="230" height="98" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+      <text x="822" y="290" class="box-title">Generate</text>
+      <text x="822" y="310" class="box-sub">Qwen/Qwen3-0.6B</text>
+      <text x="822" y="326" class="box-sub">grounded answer</text>
+
+      <path d="M1034 311 H1088" class="arrow"/>
+      <polygon points="1088,311 1078,306 1078,316" class="arrow-head"/>
+
+      <!-- Answer -->
+      <rect x="1092" y="262" width="220" height="98" rx="8" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+      <text x="1110" y="290" class="box-title">Answer JSON</text>
+      <text x="1110" y="310" class="box-sub">StudentSearchResults</text>
+      <text x="1110" y="326" class="box-sub">AndAnswer</text>
+
+      <!-- Evaluate branch -->
+      <path d="M362 360 V400 H1000 V400" class="arrow" stroke-dasharray="4 4"/>
+      <path d="M1000 400 V262" class="arrow" stroke-dasharray="4 4" marker-end="none"/>
+      <rect x="900" y="400" width="200" height="0" opacity="0"/>
+
+      <!-- ===== BONUS LANE ===== -->
+      <rect x="248" y="452" width="230" height="98" rx="8" fill="var(--bonus-soft)" stroke="var(--bonus)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="266" y="480" class="box-title">Embedding index</text>
+      <text x="266" y="500" class="box-sub">all-MiniLM-L6-v2</text>
+      <text x="266" y="516" class="box-sub">vector store, CPU</text>
+      <text x="266" y="536" class="box-tag" fill="var(--bonus)">bonus 1</text>
+
+      <path d="M651 452 V395" class="arrow" stroke-dasharray="4 4"/>
+      <polygon points="651,395 646,405 656,405" class="arrow-head" opacity=".6"/>
+
+      <path d="M478 501 H532" class="arrow" stroke-dasharray="4 4"/>
+      <polygon points="532,501 522,496 522,506" class="arrow-head"/>
+
+      <rect x="536" y="452" width="230" height="98" rx="8" fill="var(--bonus-soft)" stroke="var(--bonus)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="554" y="480" class="box-title">Hybrid fusion</text>
+      <text x="554" y="500" class="box-sub">merge lexical + semantic</text>
+      <text x="554" y="516" class="box-sub">ranked list</text>
+      <text x="554" y="536" class="box-tag" fill="var(--bonus)">bonus 2</text>
+
+      <path d="M651 452 V395" class="arrow" stroke-dasharray="4 4" transform="translate(0,0)"/>
+
+      <!-- connector from fusion back up into "Retrieve top-k" -->
+      <path d="M700 452 V395 Q700 371 480 350 Q365 340 363 360" class="arrow" stroke-dasharray="4 4" fill="none"/>
+
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--lexical-soft);border:1px solid var(--lexical)"></span>mandatory · lexical</span>
+      <span><span class="swatch" style="background:var(--accent-soft);border:1px solid var(--accent)"></span>mandatory · generation</span>
+      <span><span class="swatch" style="background:var(--bonus-soft);border:1px solid var(--bonus)"></span>optional · bonus</span>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>Why two chunkers</h3>
+      <p>Code and prose break apart differently. <code>.py</code> files split along function/class boundaries; <code>.md</code> files split along headings and paragraphs. Both cap at <code>--max_chunk_size</code> (2000 chars) — the grader rejects any source longer than that.</p>
+    </div>
+    <div class="note">
+      <h3>What stays swappable</h3>
+      <p>A <code>Retriever</code> interface with <code>.index()</code> / <code>.retrieve()</code> lets BM25 ship first. The bonus track (embeddings, hybrid) plugs in later as a second implementation — no rewrite of retrieval or generation needed.</p>
+    </div>
+    <div class="note">
+      <h3>The evaluate loop</h3>
+      <p>The dashed branch back from retrieval is your own <code>evaluate</code> command — local recall@k for iteration. The graded score comes only from the external <code>moulinette</code> binary, never called from your code.</p>
+    </div>
+  </div>
+
+  <footer>src/index → src/search(_dataset) → src/answer(_dataset) → moulinette evaluate_student_search_results</footer>
+</div>
+</body>
+</html>
