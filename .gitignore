@@ -4,13 +4,10 @@ __pycache__/
 .eggs/
 
 .venv/
-uv.lock
 
 .mypy_cache/
 .pytest_cache/
 
-.cache/
-huggingface/
 
 data/raw/
 data/processed/
