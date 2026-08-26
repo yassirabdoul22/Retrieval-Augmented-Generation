@@ -7,3 +7,6 @@ class ChunkingError(Exception):
 
 class UnvailableChunkerError(ChunkingError):
     pass
+
+class InvalidPythonSyntaxeError(ChunkingError):
+    pass
