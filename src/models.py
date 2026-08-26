@@ -44,4 +44,6 @@ class StudentSearchResultsAndAnswer(BaseModel):
 
 
 class Chunk(MinimalSource):
+    """A source location together with its raw text content."""
+
     text: str
