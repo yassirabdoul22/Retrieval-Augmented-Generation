@@ -41,3 +41,9 @@ class StudentSearchResults(BaseModel):
 class StudentSearchResultsAndAnswer(BaseModel):
     search_results: List[MinimalAnswer]
     k: int
+
+
+class Chunk(MinimalSource):
+    """A source location together with its raw text content."""
+
+    text: str
