@@ -16,8 +16,8 @@ class InvalidPythonSyntaxeError(ChunkingError):
     """Raised when a Python file cannot be parsed by ``ast``."""
 
 class RetrievalError(Exception):
-    def __int__(self,message):
-        super.__init__(f"[Error] {message}")
+    def __init__(self, message: str):
+        super().__init__(f"[Error] {message}")
 
 
 class IndexPersistenceError(RetrievalError):
