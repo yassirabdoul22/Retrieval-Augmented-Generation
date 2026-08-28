@@ -1,4 +1,4 @@
-"""Exception hierarchy for the chunking module."""
+"""Exception hierarchy for the chunking, retrieval and indexing modules."""
 
 
 class ChunkingError(Exception):
@@ -15,18 +15,24 @@ class UnvailableChunkerError(ChunkingError):
 class InvalidPythonSyntaxeError(ChunkingError):
     """Raised when a Python file cannot be parsed by ``ast``."""
 
+
 class RetrievalError(Exception):
+    """Base exception for all retrieval-related failures."""
+
     def __init__(self, message: str):
         super().__init__(f"[Error] {message}")
 
 
 class IndexPersistenceError(RetrievalError):
-    pass 
+    """Raised when a retriever's index cannot be saved or loaded."""
+
 
 class IndexingError(Exception):
-    def __init__(self,message:str):
+    """Base exception for all indexing-related failures."""
+
+    def __init__(self, message: str):
         super().__init__(f"[Error] {message}")
 
 
 class IndexedFileError(IndexingError):
-    pass
+    """Raised when a file cannot be read during indexing."""
