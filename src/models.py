@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class MinimalSource(BaseModel):
@@ -27,6 +27,12 @@ class MinimalSearchResults(BaseModel):
     question_id: str
     question: str
     retrieved_sources: List[MinimalSource]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def question_str(self) -> str:
+        """Alias expected by the grading moulinette, mirrors ``question``."""
+        return self.question
 
 
 class MinimalAnswer(MinimalSearchResults):

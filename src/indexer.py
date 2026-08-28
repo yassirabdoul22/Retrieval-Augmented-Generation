@@ -2,7 +2,12 @@ from pathlib import Path
 from typing import List
 
 from src.chunking import get_chunker
-from src.exceptions import ChunkingError, IndexingError
+from src.exceptions import (
+    IndexingError,
+    InvalidPythonSyntaxeError,
+    UnvailableChunkerError,
+)
+from src.loger import Loger, LogerType
 from src.models import Chunk
 from src.retrieval.base import Retriever
 
@@ -11,7 +16,7 @@ class Indexer:
 
     def __init__(
         self, data_path: str, max_chunk_size: int, retriever: Retriever
-    ):
+    ) -> None:
         self.data_path = data_path
         self.max_chunk_size = max_chunk_size
         self._directory = Path(data_path)
@@ -31,14 +36,19 @@ class Indexer:
                     file_path=str(file_path),
                     max_chunk_size=self.max_chunk_size,
                 )
-            except ChunkingError:
+            except UnvailableChunkerError:
+                Loger(LogerType.UNSUPPORTED_EXTENSION).log(str(file_path))
                 continue
             try:
                 content = self._get_file_content(file_path=str(file_path))
                 self.chunks.extend(
                     chunker.chunk(file_path=str(file_path), content=content)
                 )
-            except (ChunkingError, IndexingError):
+            except IndexingError:
+                Loger(LogerType.FILE_READ_ERROR).log(str(file_path))
+                continue
+            except InvalidPythonSyntaxeError:
+                Loger(LogerType.INVALID_SYNTAX).log(str(file_path))
                 continue
 
     def _get_file_content(self, file_path: str) -> str:
