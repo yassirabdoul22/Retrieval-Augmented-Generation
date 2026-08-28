@@ -6,6 +6,8 @@ requires-python = ">=3.10"
 dependencies = [
     "bm25s>=0.3.11",
     "pydantic>=2.13.4",
+    "fire>=0.7.1",
+    "tqdm>=4.70.0"
 ]
 
 
