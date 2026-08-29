@@ -1,8 +1,13 @@
-from typing import List
+from typing import List, cast
 
 from tqdm import tqdm
 
-from src.models import MinimalSearchResults, RagDataset, StudentSearchResults
+from src.models import (
+    MinimalSearchResults,
+    MinimalSource,
+    RagDataset,
+    StudentSearchResults,
+)
 from src.retrieval.base import Retriever
 
 
@@ -20,7 +25,7 @@ class DatasetSearcher:
                 MinimalSearchResults(
                     question_id=question.question_id,
                     question=question.question,
-                    retrieved_sources=sources,
+                    retrieved_sources=cast(List[MinimalSource], sources),
                 )
             )
         return StudentSearchResults(search_results=results, k=self.k)
