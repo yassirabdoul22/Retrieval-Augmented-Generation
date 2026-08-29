@@ -7,7 +7,9 @@ dependencies = [
     "bm25s>=0.3.11",
     "pydantic>=2.13.4",
     "fire>=0.7.1",
-    "tqdm>=4.70.0"
+    "tqdm>=4.70.0",
+    "transformers>=5.16.1",
+    "torch>=2.13.0"
 ]
 
 

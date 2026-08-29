@@ -2,11 +2,14 @@ from pathlib import Path
 
 import fire
 
+from src.dataset_answerer import DatasetAnswerer
 from src.dataset_searcher import DatasetSearcher
+from src.generator import Generator
 from src.indexer import Indexer
 from src.io_utils import read_json_model, write_json_model
-from src.models import RagDataset
+from src.models import RagDataset, StudentSearchResults
 from src.retrieval.bm25_retriever import BM25Retriever
+from src.source_loader import read_source_text
 
 
 class CLI:
@@ -43,6 +46,27 @@ class CLI:
         )
         write_json_model(
             f"{save_directory}/{Path(dataset_path).name}", results
+        )
+
+    def answer(self, query: str, k: int = 10) -> None:
+        query = str(query)
+        self._retriever.load("data/processed")
+        sources = self._retriever.retrieve(query=query, k=k)
+        sources_text = [read_source_text(source) for source in sources]
+        generator = Generator()
+        print(generator.generate(query, sources_text))
+
+    def answer_dataset(
+        self, student_search_results_path: str, save_directory: str = "."
+    ) -> None:
+        search_results = read_json_model(
+            student_search_results_path, StudentSearchResults
+        )
+        generator = Generator()
+        results = DatasetAnswerer(generator).answer(search_results)
+        write_json_model(
+            f"{save_directory}/{Path(student_search_results_path).name}",
+            results,
         )
 
 

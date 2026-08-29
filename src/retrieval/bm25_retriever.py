@@ -4,7 +4,7 @@ from typing import List
 import bm25s
 
 from src.exceptions import IndexPersistenceError
-from src.models import Chunk, MinimalSource
+from src.models import Chunk
 
 from .base import Retriever
 
@@ -21,7 +21,7 @@ class BM25Retriever(Retriever):
         self.bm25s_index.index(corpus_tokens)
         self.chunks = chunks
 
-    def retrieve(self, query: str, k: int) -> List[MinimalSource]:
+    def retrieve(self, query: str, k: int) -> List[Chunk]:
         if k <= 0:
             return []
         query_tokens = bm25s.tokenize(query)

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from src.models import Chunk, MinimalSource
+from src.models import Chunk
 
 
 class Retriever(ABC):
@@ -11,7 +11,7 @@ class Retriever(ABC):
         pass
 
     @abstractmethod
-    def retrieve(self, query: str, k: int) -> List[MinimalSource]:
+    def retrieve(self, query: str, k: int) -> List[Chunk]:
         pass
 
     @abstractmethod
