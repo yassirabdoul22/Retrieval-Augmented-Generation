@@ -4,6 +4,7 @@ import fire
 
 from src.dataset_answerer import DatasetAnswerer
 from src.dataset_searcher import DatasetSearcher
+from src.evaluater import Evaluater
 from src.generator import Generator
 from src.indexer import Indexer
 from src.io_utils import read_json_model, write_json_model
@@ -68,6 +69,17 @@ class CLI:
             f"{save_directory}/{Path(student_search_results_path).name}",
             results,
         )
+
+    def evaluate(
+        self, student_search_results_path: str, dataset_path: str
+    ) -> None:
+        student_results = read_json_model(
+            student_search_results_path, StudentSearchResults
+        )
+        reference = read_json_model(dataset_path, RagDataset)
+        result = Evaluater().evaluate(student_results, reference)
+        for k, v in result.items():
+            print(f"{k}: {v:.3f} ({v * 100:.1f}%)")
 
 
 if __name__ == "__main__":
