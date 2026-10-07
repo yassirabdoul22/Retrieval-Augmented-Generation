@@ -10,6 +10,7 @@ from src.exceptions import (
 from src.loger import Loger, LogerType
 from src.models import Chunk
 from src.retrieval.base import Retriever
+from src.chunking.markdown_chunker import MarkdownChunker
 
 
 class Indexer:
@@ -49,6 +50,8 @@ class Indexer:
                 continue
             except InvalidPythonSyntaxeError:
                 Loger(LogerType.INVALID_SYNTAX).log(str(file_path))
+                fallback = MarkdownChunker(max_chunk_size=self.max_chunk_size)
+                self.chunks.extend(fallback.chunk(str(file_path), content))
                 continue
 
     def _get_file_content(self, file_path: str) -> str:

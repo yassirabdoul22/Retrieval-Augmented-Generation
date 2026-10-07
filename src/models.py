@@ -51,5 +51,8 @@ class StudentSearchResultsAndAnswer(BaseModel):
 
 class Chunk(MinimalSource):
     """A source location together with its raw text content."""
-
     text: str
+    @property
+    def indexable_text(self)->str:
+        return f"{self.file_path.replace('/',' ')}\n{self.text}"
+    
