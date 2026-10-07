@@ -11,7 +11,6 @@ from src.models import (
 )
 from src.source_loader import read_source_text
 
-
 class DatasetAnswerer:
 
     def __init__(self, generator: Generator):
