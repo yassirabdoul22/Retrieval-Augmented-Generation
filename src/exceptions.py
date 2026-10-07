@@ -14,7 +14,8 @@ class UnvailableChunkerError(ChunkingError):
 
 class InvalidPythonSyntaxeError(ChunkingError):
     """Raised when a Python file cannot be parsed by ``ast``."""
-
+class InvalidChunkSizeError(ChunkingError):
+    """Raised when invalid chunk size value is passed"""
 
 class RetrievalError(Exception):
     """Base exception for all retrieval-related failures."""
@@ -22,7 +23,8 @@ class RetrievalError(Exception):
     def __init__(self, message: str):
         super().__init__(f"[Error] {message}")
 
-
+class InvalidTopKError(RetrievalError):
+    """ Raised when k is less or equal 0"""
 class IndexPersistenceError(RetrievalError):
     """Raised when a retriever's index cannot be saved or loaded."""
 
