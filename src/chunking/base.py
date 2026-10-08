@@ -50,7 +50,7 @@ class Chunker(ABC):
     def compute_line_offsets(self, content: str) -> List[int]:
         """Return the character offset where each line starts."""
         lines = content.splitlines(keepends=True)
-        offsets = [0]
+        offsets = [0]   
         for line in lines:
             offsets.append(offsets[-1] + len(line))
         return offsets

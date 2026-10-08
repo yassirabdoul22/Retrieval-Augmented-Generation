@@ -39,7 +39,7 @@ class FingerprintTracker:
             while buf := file.read(BLOCK_SIZE):
                 digest.update(buf)
         return digest.hexdigest()
-
+    @staticmethod
     def load(self) -> Optional[FingerPrintSnapshot]:
         """Return the saved snapshot, or None if absent or unreadable."""
         try:
@@ -48,8 +48,8 @@ class FingerprintTracker:
             )
         except (OSError, ValidationError):
             return None
-
-    def save(self, snapshot: FingerPrintSnapshot) -> None:
+    @staticmethod
+    def save(snapshot: FingerPrintSnapshot) -> None:
         """Write the snapshot as JSON, creating the folder if needed."""
         self._snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         self._snapshot_path.write_text(

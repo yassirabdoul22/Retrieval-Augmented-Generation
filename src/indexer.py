@@ -29,6 +29,7 @@ class Indexer:
         self.retriever.index(self.chunks)
 
     def load_chunks(self) -> None:
+        self.chunks = []
         for file_path in self._directory.rglob("*"):
             if not file_path.is_file():
                 continue
