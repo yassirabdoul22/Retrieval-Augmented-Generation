@@ -4,7 +4,7 @@ import fire
 
 from src.dataset_searcher import DatasetSearcher
 from src.evaluater import Evaluater
-from src.indexer import Indexer
+from src.indexer.indexer import Indexer
 from src.io_utils import read_json_model, write_json_model
 from src.models import RagDataset, StudentSearchResults
 from src.retrieval.bm25_retriever import BM25Retriever
