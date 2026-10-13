@@ -11,7 +11,6 @@ class ChunkingError(Exception):
 class UnvailableChunkerError(ChunkingError):
     """Raised when no chunker is available for a given file extension."""
 
-
 class InvalidPythonSyntaxeError(ChunkingError):
     """Raised when a Python file cannot be parsed by ``ast``."""
 class InvalidChunkSizeError(ChunkingError):

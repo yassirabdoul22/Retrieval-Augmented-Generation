@@ -1,4 +1,4 @@
-from src.exceptions import InvalidChunkSizeError , InvalidTopKError
+from src.utils.exceptions import InvalidChunkSizeError , InvalidTopKError
 
 
 
@@ -12,19 +12,15 @@ class Validator:
             raise InvalidChunkSizeError(
                 "chunk size must be grater the 0"
                 f"and less then {Validator.MAX_CHUNK_SIZE}"
-            )
-        
+            )  
         return chunk_size
-    
+
     def validate_top_k_value(self, k: object, chunks_len: int) -> int:
-        
+
         if isinstance(k, bool) or not isinstance(k, int):
             raise InvalidTopKError(f"k must be an integer go {k!r}")
         if k <= 0:
             raise InvalidTopKError(f"k must be a positive integer got {k!r}")
         if k > chunks_len:
             raise InvalidTopKError(f"impossible rank {k} chunks (there is {chunks_len!r})")
-
-    
         return k
-    

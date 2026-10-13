@@ -2,7 +2,7 @@
 
 import re
 
-from src.exceptions import UnvailableChunkerError
+from src.utils.exceptions import UnvailableChunkerError
 
 from .base import Chunker
 from .code_chunker import CodeChunker

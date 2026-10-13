@@ -3,10 +3,10 @@ from typing import List
 
 import bm25s
 
-from src.exceptions import IndexPersistenceError, InvalidTopKError
+from src.utils.exceptions import IndexPersistenceError
 from src.models import Chunk
 from .base import Retriever
-from src.validator import Validator
+from src.utils.validator import Validator
 
 class BM25Retriever(Retriever):
 
@@ -14,14 +14,15 @@ class BM25Retriever(Retriever):
         self.chunks: List[Chunk] = []
         self.bm25s_index = bm25s.BM25()
         self._validator = Validator()
+
     def index(self, chunks: List[Chunk]) -> None:
         content: List[str] = [chunk.indexable_text for chunk in chunks]
         corpus_tokens = bm25s.tokenize(content)
         self.bm25s_index.index(corpus_tokens)
         self.chunks = chunks
-    
+
     def retrieve(self, query: str, k: int, validator: Validator) -> List[Chunk]:
-        
+
         k= validator.validate_top_k_value(k,len(self.chunks))
         query_tokens = bm25s.tokenize(query)
         indexes, _ = self.bm25s_index.retrieve(query_tokens, k=k)

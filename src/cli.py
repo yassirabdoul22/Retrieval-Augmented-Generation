@@ -5,12 +5,12 @@ import fire
 from src.dataset_searcher import DatasetSearcher
 from src.evaluater import Evaluater
 from src.indexer.indexer import Indexer
-from src.io_utils import read_json_model, write_json_model
+from src.utils.io_utils import read_json_model, write_json_model
 from src.models import RagDataset, StudentSearchResults
 from src.retrieval.bm25_retriever import BM25Retriever
 from src.source_loader import read_source_text
-from src.exceptions import IndexPersistenceError
-from src.validator import Validator
+from src.utils.exceptions import IndexPersistenceError
+from src.utils.validator import Validator
 
 class CLI:
 

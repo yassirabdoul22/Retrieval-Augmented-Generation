@@ -48,8 +48,7 @@ class FingerprintTracker:
             )
         except (OSError, ValidationError):
             return None
-    @staticmethod
-    def save(snapshot: FingerPrintSnapshot) -> None:
+    def save(self,snapshot: FingerPrintSnapshot) -> None:
         """Write the snapshot as JSON, creating the folder if needed."""
         self._snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         self._snapshot_path.write_text(

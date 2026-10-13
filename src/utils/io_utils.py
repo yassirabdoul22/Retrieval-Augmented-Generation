@@ -2,7 +2,7 @@ from typing import Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from src.exceptions import IndexingError
+from src.utils.exceptions import IndexingError
 
 T = TypeVar("T", bound=BaseModel)
 

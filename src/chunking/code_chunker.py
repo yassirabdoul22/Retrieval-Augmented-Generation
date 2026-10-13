@@ -3,7 +3,7 @@
 import ast
 from typing import List
 
-from src.exceptions import InvalidPythonSyntaxeError
+from src.utils.exceptions import InvalidPythonSyntaxeError
 from src.models import Chunk
 
 from .base import Chunker

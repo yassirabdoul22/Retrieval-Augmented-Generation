@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import List
 
 from src.chunking import get_chunker
-from src.exceptions import (
+from src.utils.exceptions import (
     IndexingError,
     InvalidPythonSyntaxeError,
     UnvailableChunkerError,
 )
-from src.loger import Loger, LogerType
+from src.utils.loger import Loger, LogerType
 from src.models import Chunk
 from src.retrieval.base import Retriever
 from src.chunking.markdown_chunker import MarkdownChunker

@@ -9,7 +9,7 @@ def main() -> None:
         import fire
 
         from src.cli import CLI
-        from src.exceptions import ChunkingError, IndexingError, RetrievalError
+        from src.utils.exceptions import ChunkingError, IndexingError, RetrievalError
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
         sys.exit(130)

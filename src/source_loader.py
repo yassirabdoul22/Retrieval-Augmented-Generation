@@ -1,4 +1,4 @@
-from src.exceptions import IndexingError
+from src.utils.exceptions import IndexingError
 from src.models import MinimalSource
 
 
