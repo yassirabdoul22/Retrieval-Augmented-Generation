@@ -5,11 +5,12 @@ import fire
 from src.dataset_searcher import DatasetSearcher
 from src.evaluater import Evaluater
 from src.indexer.indexer import Indexer
+from src.indexer.incremental_indexer import IncrementalIndexer
 from src.utils.io_utils import read_json_model, write_json_model
 from src.models import RagDataset, StudentSearchResults
 from src.retrieval.bm25_retriever import BM25Retriever
 from src.source_loader import read_source_text
-from src.utils.exceptions import IndexPersistenceError
+from src.utils.exceptions import IndexingError, IndexPersistenceError
 from src.utils.validator import Validator
 
 class CLI:
@@ -18,15 +19,27 @@ class CLI:
         self._retriever = BM25Retriever()
         self._validator = Validator()
 
-    def index(self, max_chunk_size:int = 2000) -> None:
+    def index(self, max_chunk_size:int = 2000, incremental:bool=False) -> None:
         max_chunk_size = self._validator.validate_chunk_size_value(max_chunk_size)
-        indexer = Indexer(
-            data_path="data/raw",
-            max_chunk_size=max_chunk_size,
-            retriever=self._retriever,
-        )
+        
+        if not isinstance(incremental,bool):
+            raise IndexingError(f"--incremental takes no value, got {incremental!r}")        
+        if incremental:
+            indexer: Indexer =IncrementalIndexer(
+                max_chunk_size= max_chunk_size,
+                data_path= "data/raw",
+                retriever= self._retriever,
+                index_path="data/processed"
+            )
+        else:
+            indexer = Indexer(
+                data_path="data/raw",
+                max_chunk_size=max_chunk_size,
+                retriever=self._retriever,
+            )
+        
         indexer.indexing()
-        self._retriever.save("data/processed")
+        indexer.save("data/processed")
 
     def search(self, query: str, k:int = 10) -> None:
         query = str(query)
@@ -60,7 +73,7 @@ class CLI:
         from src.generator import Generator
         query = str(query)
         self._retriever.load("data/processed")
-        sources = self._retriever.retrieve(query=query, k=k)
+        sources = self._retriever.retrieve(query=query, k=k, validator=self._validator)
         sources_text = [read_source_text(source) for source in sources]
         generator = Generator()
         print(generator.generate(query, sources_text))

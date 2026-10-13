@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 BLOCK_SIZE = 1 << 16
 
-
+FINGERPRINTS_FILE = "fingerprints.json"
 class FileFingerPrint(BaseModel):
     """Identity of one file's content at indexing time."""
 
@@ -39,7 +39,7 @@ class FingerprintTracker:
             while buf := file.read(BLOCK_SIZE):
                 digest.update(buf)
         return digest.hexdigest()
-    @staticmethod
+
     def load(self) -> Optional[FingerPrintSnapshot]:
         """Return the saved snapshot, or None if absent or unreadable."""
         try:
