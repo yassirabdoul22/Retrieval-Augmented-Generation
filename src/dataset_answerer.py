@@ -9,7 +9,7 @@ from src.models import (
     StudentSearchResults,
     StudentSearchResultsAndAnswer,
 )
-from src.source_loader import read_source_text
+from src.utils.io_utils import read_source_text
 
 class DatasetAnswerer:
 

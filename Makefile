@@ -7,7 +7,8 @@ install:
 
 run:
 	uv run python3 -m src index --max_chunk_size $(MAX_CHUNK_SIZE)
-
+run-server:
+	uv run fastapi dev src/api.py
 debug:
 	uv run python3 -m pdb -m src index --max_chunk_size $(MAX_CHUNK_SIZE)
 
