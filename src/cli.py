@@ -13,7 +13,13 @@ from src.utils.io_utils import read_source_text
 from src.utils.exceptions import IndexingError, IndexPersistenceError
 from src.utils.validator import Validator
 from src.rag_service import RagService
-
+from src.utils.config import (
+    DEFAULT_RAW_DATA_PATH,
+    DEFAULT_INDEX_PATH,
+    DEFAULT_SAVE_DIRECTORY,
+    DEFAULT_MAX_CHUNK_SIZE,
+    DEFAULT_TOP_K
+)
 class CLI:
 
     def __init__(self) -> None:
@@ -21,7 +27,7 @@ class CLI:
         self._validator = Validator()
         self._rag_service = RagService()
 
-    def index(self, max_chunk_size:int = 2000, incremental:bool=False) -> None:
+    def index(self, max_chunk_size:int = DEFAULT_MAX_CHUNK_SIZE, incremental:bool=False, data_path: str = DEFAULT_RAW_DATA_PATH, index_path: str = DEFAULT_INDEX_PATH) -> None:
         max_chunk_size = self._validator.validate_chunk_size_value(max_chunk_size)
         
         if not isinstance(incremental,bool):
@@ -29,28 +35,28 @@ class CLI:
         if incremental:
             indexer: Indexer =IncrementalIndexer(
                 max_chunk_size= max_chunk_size,
-                data_path= "data/raw",
+                data_path= data_path,
                 retriever= self._retriever,
-                index_path="data/processed"
+                index_path= index_path
             )
         else:
             indexer = Indexer(
-                data_path="data/raw",
+                data_path=data_path,
                 max_chunk_size=max_chunk_size,
                 retriever=self._retriever,
             )
         
         indexer.indexing()
-        indexer.save("data/processed")
+        indexer.save(index_path)
 
-    def search(self, query: str, k:int = 10) -> None:
+    def search(self, query: str, k:int = DEFAULT_TOP_K,index_path =DEFAULT_INDEX_PATH) -> None:
         query = str(query)
         try:
-            self._retriever.load("data/processed")
+            self._retriever.load(index_path)
             k = self._validator.validate_top_k_value(k,len(self._retriever.chunks))
         except IndexPersistenceError:
             print("Error: no index found. Run the index command first:")
-            print("uv run python -m src index --max_chunk_size 2000")
+            print(f"uv run python -m src index --max_chunk_size {DEFAULT_MAX_CHUNK_SIZE}")
             exit(1)
         results = self._retriever.retrieve(query=query, k=k,validator=self._validator)
         for r in results:
@@ -60,10 +66,10 @@ class CLI:
             )
                     
     def search_dataset(
-        self, dataset_path: str, k: int = 10, save_directory: str = "."
+        self, dataset_path: str, k: int = DEFAULT_TOP_K, save_directory: str = DEFAULT_SAVE_DIRECTORY, index_path = DEFAULT_INDEX_PATH
     ) -> None:
         dataset = read_json_model(dataset_path, RagDataset)
-        self._retriever.load("data/processed")
+        self._retriever.load(index_path)
         results = DatasetSearcher(retriever=self._retriever, k=k).search(
             dataset=dataset
         )
@@ -75,7 +81,7 @@ class CLI:
         print(self._rag_service.answer(query=query,k=k))
 
     def answer_dataset(
-        self, student_search_results_path: str, save_directory: str = "."
+        self, student_search_results_path: str, save_directory: str = DEFAULT_SAVE_DIRECTORY
     ) -> None:
         from src.dataset_answerer import DatasetAnswerer
         from src.generator import Generator
