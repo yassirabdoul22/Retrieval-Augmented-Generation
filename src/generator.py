@@ -27,8 +27,9 @@ class Generator:
                     "You are a technical assistant answering questions "
                     "about the vLLM codebase. Answer ONLY using the "
                     "provided context below. If the context does not "
-                    "contain the answer, say you don't know. Be concise "
-                    "and factual. Do not invent information."
+                    "contain the answer, reply exactly: \"I don't know based on the "
+                    "provided context.\" Do not describe the context. "
+                    "Be concise and factual. Do not invent information."
                 ),
             },
             {

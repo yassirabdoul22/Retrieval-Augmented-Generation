@@ -9,15 +9,17 @@ from src.indexer.incremental_indexer import IncrementalIndexer
 from src.utils.io_utils import read_json_model, write_json_model
 from src.models import RagDataset, StudentSearchResults
 from src.retrieval.bm25_retriever import BM25Retriever
-from src.source_loader import read_source_text
+from src.utils.io_utils import read_source_text
 from src.utils.exceptions import IndexingError, IndexPersistenceError
 from src.utils.validator import Validator
+from src.rag_service import RagService
 
 class CLI:
 
     def __init__(self) -> None:
         self._retriever = BM25Retriever()
         self._validator = Validator()
+        self._rag_service = RagService()
 
     def index(self, max_chunk_size:int = 2000, incremental:bool=False) -> None:
         max_chunk_size = self._validator.validate_chunk_size_value(max_chunk_size)
@@ -70,13 +72,7 @@ class CLI:
         )
 
     def answer(self, query: str, k: int = 10) -> None:
-        from src.generator import Generator
-        query = str(query)
-        self._retriever.load("data/processed")
-        sources = self._retriever.retrieve(query=query, k=k, validator=self._validator)
-        sources_text = [read_source_text(source) for source in sources]
-        generator = Generator()
-        print(generator.generate(query, sources_text))
+        print(self._rag_service.answer(query=query,k=k))
 
     def answer_dataset(
         self, student_search_results_path: str, save_directory: str = "."

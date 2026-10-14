@@ -9,7 +9,8 @@ dependencies = [
     "fire>=0.7.1",
     "tqdm>=4.70.0",
     "transformers>=5.16.1",
-    "torch>=2.13.0"
+    "torch>=2.13.0",
+    "fastapi[standard]"
 ]
 
 
