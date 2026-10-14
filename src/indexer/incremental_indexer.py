@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from src.models import Chunk
 from src.retrieval.base import Retriever
-from src.utils.exceptions import IndexPersistenceError, UnvailableChunkerError
+from src.utils.exceptions import IndexPersistenceError, UnvailableChunkerError, IndexingError, InvalidPythonSyntaxeError
 from src.utils.loger import Loger, LogerType
 from src.chunking import get_chunker
 
@@ -46,7 +46,6 @@ class IncrementalIndexer(Indexer):
             Loger(LogerType.FULL_REINDEXING).log(reason or "no snapshot")
             self._snapshot = self._fingerprint_everything()
             super().indexing()
-            
             return
 
         to_chunk, deleted, prints = self._tracker.detect_changes(

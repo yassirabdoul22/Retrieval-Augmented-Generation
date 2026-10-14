@@ -13,12 +13,14 @@ from src.utils.io_utils import read_source_text
 from src.utils.exceptions import IndexingError, IndexPersistenceError
 from src.utils.validator import Validator
 from src.rag_service import RagService
+
 class CLI:
 
     def __init__(self) -> None:
         self._retriever = BM25Retriever()
         self._validator = Validator()
         self._rag_service = RagService()
+
     def index(self, max_chunk_size:int = 2000, incremental:bool=False) -> None:
         max_chunk_size = self._validator.validate_chunk_size_value(max_chunk_size)
         
