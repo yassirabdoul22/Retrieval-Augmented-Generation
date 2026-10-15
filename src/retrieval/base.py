@@ -6,6 +6,8 @@ from src.models import Chunk
 
 class Retriever(ABC):
 
+    chunks: List[Chunk]
+
     @abstractmethod
     def index(self, chunks: List[Chunk]) -> None:
         pass

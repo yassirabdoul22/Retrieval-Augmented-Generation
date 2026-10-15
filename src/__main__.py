@@ -4,15 +4,22 @@ import sys
 
 
 def main() -> None:
-    """Run the CLI, turning expected errors into clean messages."""
+    """Run the CLI, turning every error into a clean message."""
     try:
         import fire
 
         from src.cli import CLI
-        from src.utils.exceptions import ChunkingError, IndexingError, RetrievalError
+        from src.utils.exceptions import (
+            ChunkingError,
+            IndexingError,
+            RetrievalError,
+        )
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
         sys.exit(130)
+    except Exception as e:
+        print(f"[Error] failed to start: {e}", file=sys.stderr)
+        sys.exit(1)
 
     try:
         fire.Fire(CLI)
@@ -22,6 +29,9 @@ def main() -> None:
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
         sys.exit(130)
+    except Exception as e:
+        print(f"[Error] {type(e).__name__}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

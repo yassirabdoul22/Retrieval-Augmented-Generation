@@ -10,7 +10,8 @@ dependencies = [
     "tqdm>=4.70.0",
     "transformers>=5.16.1",
     "torch>=2.13.0",
-    "fastapi[standard]"
+    "fastapi[standard]",
+    "sentence-transformers>=6.1.0",
 ]
 
 

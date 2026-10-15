@@ -1,13 +1,12 @@
+from pathlib import Path
 from typing import Type, TypeVar
+
 from pydantic import BaseModel, ValidationError
 from src.utils.exceptions import IndexingError
 from src.models import MinimalSource
 
-
-
-
-
 T = TypeVar("T", bound=BaseModel)
+
 
 def read_json_model(path: str, model: Type[T]) -> T:
     try:
@@ -20,8 +19,10 @@ def read_json_model(path: str, model: Type[T]) -> T:
 
 
 def write_json_model(path: str, model: BaseModel) -> None:
+    """Write model as JSON, creating the parent directories if needed."""
     try:
-        with open(path, "w") as file:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as file:
             file.write(model.model_dump_json(indent=2))
     except OSError as e:
         raise IndexingError(f"cannot write to {path}: {e}") from e

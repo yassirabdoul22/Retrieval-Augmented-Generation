@@ -23,7 +23,4 @@ def answer(request: Request) -> RequestAnswer:
         query=request.query,
         k=request.k,
     )
-    if isinstance(result, str):
-        return RequestAnswer(answer=result)
-
-    
+    return RequestAnswer(answer=result)

@@ -62,7 +62,7 @@ class IncrementalIndexer(Indexer):
         print(f"Re-chunked {len(to_chunk)} file(s), removed {len(deleted)}, "
               f"total {len(self.chunks)} chunks")
 
-    def save(self, index_path: str) -> None:        
+    def save(self, index_path: str) -> None:
         """Store the index first, the fingerprints last."""
         super().save(index_path)
         self._tracker.save(self._snapshot)
