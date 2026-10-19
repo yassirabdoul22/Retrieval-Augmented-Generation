@@ -11,14 +11,19 @@ from src.models import (
 )
 from src.utils.io_utils import read_source_text
 
+
 class DatasetAnswerer:
 
+    """Generate grounded answers for a batch of retrieved questions."""
+
     def __init__(self, generator: Generator):
+        """Store the generator used to answer the retrieved questions."""
         self.generator = generator
 
     def answer(
         self, search_results: StudentSearchResults
     ) -> StudentSearchResultsAndAnswer:
+        """Generate an answer for each question using its saved sources."""
         results: List[MinimalAnswer] = []
         for result in tqdm(search_results.search_results):
             sources_text = [

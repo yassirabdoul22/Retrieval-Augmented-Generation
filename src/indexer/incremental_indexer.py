@@ -6,9 +6,8 @@ from typing import List, Optional
 
 from src.models import Chunk
 from src.retrieval.base import Retriever
-from src.utils.exceptions import IndexPersistenceError, UnvailableChunkerError, IndexingError, InvalidPythonSyntaxeError
+from src.utils.exceptions import IndexPersistenceError
 from src.utils.loger import Loger, LogerType
-from src.chunking import get_chunker
 
 from .fingerprint_tracker import (
     FINGERPRINTS_FILE,
@@ -99,27 +98,3 @@ class IncrementalIndexer(Indexer):
             return (f"max_chunk_size changed "
                     f"({snapshot.max_chunk_size} -> {self.max_chunk_size})")
         return None
-    
-    def _corpus_files(self) -> List[Path]:
-        """Return the list of all files in the corpus."""
-        return [p for p in Path(self.data_path).rglob("*") if p.is_file()]
-
-    
-    
-    def _chunk_files(self, files: List[Path]) -> List[Chunk]:
-        chunks = []
-        for file in files:
-            try:
-                chunker = get_chunker(str(file),self.max_chunk_size)
-            except UnvailableChunkerError:
-                Loger(LogerType.UNSUPPORTED_EXTENSION).log(str(file))
-                continue
-            try:
-                content = self._get_file_content(str(file))
-                chunks.extend(chunker.chunk(str(file),content))
-            except IndexingError:
-                Loger(LogerType.FILE_READ_ERROR).log(str(file))
-            except InvalidPythonSyntaxeError:
-                Loger(LogerType.INVALID_SYNTAX).log(str(file))
-        
-        return chunks

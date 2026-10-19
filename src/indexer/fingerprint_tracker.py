@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field, ValidationError
 BLOCK_SIZE = 1 << 16
 
 FINGERPRINTS_FILE = "fingerprints.json"
+
+
 class FileFingerPrint(BaseModel):
     """Identity of one file's content at indexing time."""
 
@@ -48,7 +50,8 @@ class FingerprintTracker:
             )
         except (OSError, ValidationError):
             return None
-    def save(self,snapshot: FingerPrintSnapshot) -> None:
+
+    def save(self, snapshot: FingerPrintSnapshot) -> None:
         """Write the snapshot as JSON, creating the folder if needed."""
         self._snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         self._snapshot_path.write_text(

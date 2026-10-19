@@ -10,6 +10,7 @@ class Chunker(ABC):
     """Base class extended by CodeChunker and MarkdownChunker."""
 
     def __init__(self, max_chunk_size: int) -> None:
+        """Initialize the component and its configuration."""
         self.max_chunk_size = max_chunk_size
 
     def chunk(self, file_path: str, content: str) -> List[Chunk]:
@@ -50,7 +51,7 @@ class Chunker(ABC):
     def compute_line_offsets(self, content: str) -> List[int]:
         """Return the character offset where each line starts."""
         lines = content.splitlines(keepends=True)
-        offsets = [0]   
+        offsets = [0]
         for line in lines:
             offsets.append(offsets[-1] + len(line))
         return offsets

@@ -9,9 +9,12 @@ from src.models import (
 
 
 class Evaluater:
+    """Measure recall using file identity and character range overlap."""
+
     def evaluate(
         self, student_resulls: StudentSearchResults, reference: RagDataset
     ) -> Dict[str, float]:
+        """Compute retrieval recall against the reference question dataset."""
         truth_by_id = {
             q.question_id: q.sources
             for q in reference.rag_questions
@@ -34,6 +37,7 @@ class Evaluater:
     def _compute_overlap_ratio(
         self, a: MinimalSource, b: MinimalSource
     ) -> float:
+        """Compute character interval intersection over union in one file."""
         if a.file_path != b.file_path:
             return 0.0
         intersection = max(
@@ -54,6 +58,7 @@ class Evaluater:
         retrieved: List[MinimalSource],
         threshold: float = 0.05,
     ) -> bool:
+        """Check whether any retrieved source meets the overlap threshold."""
         return any(
             self._compute_overlap_ratio(real_source, r) >= threshold
             for r in retrieved
@@ -65,6 +70,7 @@ class Evaluater:
         retrived: List[MinimalSource],
         k: int,
     ) -> float:
+        """Return the fraction of reference sources matched in the top k."""
         if not real_sources:
             return 0.0
         top_k = retrived[:k]

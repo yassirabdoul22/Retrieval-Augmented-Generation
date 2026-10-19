@@ -9,6 +9,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def read_json_model(path: str, model: Type[T]) -> T:
+    """Read a JSON file and validate it against the requested model."""
     try:
         with open(path) as f:
             return model.model_validate_json(f.read())

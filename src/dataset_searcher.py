@@ -13,11 +13,15 @@ from src.retrieval.base import Retriever
 
 class DatasetSearcher:
 
+    """Run retrieval over a validated question dataset."""
+
     def __init__(self, retriever: Retriever, k: int):
+        """Store the retriever and the requested number of results."""
         self.retriever = retriever
         self.k = k
 
     def search(self, dataset: RagDataset) -> StudentSearchResults:
+        """Retrieve sources for each question while preserving question IDs."""
         results: List[MinimalSearchResults] = []
         for question in tqdm(dataset.rag_questions):
             sources = self.retriever.retrieve(question.question, self.k)
