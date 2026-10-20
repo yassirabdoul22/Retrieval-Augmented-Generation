@@ -4,7 +4,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.compressor import ContextCompressor
-from src.config import (
+from src.utils.config import (
     MAX_CONTEXT_TOKENS,
     COMPRESSED_CONTEXT_TOKENS,
     MAX_NEW_TOKENS,
