@@ -8,8 +8,7 @@ from src.utils.exceptions import IndexPersistenceError
 from src.models import Chunk
 from .base import Retriever
 from src.utils.validator import Validator
-
-CHUNKS_FILE = "chunks.pkl"
+from src.utils.config import CHUNKS_FILE
 
 
 class BM25Retriever(Retriever):

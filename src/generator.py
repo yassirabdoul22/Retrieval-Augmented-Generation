@@ -22,7 +22,6 @@ class Generator:
         torch.set_num_threads(USED_THREADS_NUMBER)
         if max_context_tokens <= MAX_NEW_TOKENS:
             raise ValueError("Token budget must exceed max_new_tokens")
-        # float32: the CPU has no bfloat16 support, which would be emulated
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name, dtype=torch.float32,
         )

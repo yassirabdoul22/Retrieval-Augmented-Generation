@@ -60,7 +60,7 @@ class CLI:
 
         indexer.indexing()
         indexer.save(index_path)
-        print(f"Ingestion complete! Indices saved under {index_path}")
+        print(f"Ingestion complete! Indices saved  '{index_path}'")
 
     def search(
         self, query: str, k: int = DEFAULT_TOP_K,
