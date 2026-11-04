@@ -11,7 +11,7 @@ dependencies = [
     "transformers>=5.16.1",
     "torch>=2.13.0",
     "fastapi[standard]",
-    "sentence-transformers>=6.1.0",
+    "sentence-transformers>=6.2.0",
 ]
 
 
@@ -23,3 +23,11 @@ dev = [
 
 [tool.mypy]
 exclude = ["\\.venv/", "^data/"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

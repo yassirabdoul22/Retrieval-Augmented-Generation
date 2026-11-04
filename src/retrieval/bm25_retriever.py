@@ -17,24 +17,30 @@ class BM25Retriever(Retriever):
 
     def __init__(self) -> None:
         """Create an empty BM25 index and retrieval input validator."""
-        self.chunks: List[Chunk] = []
+        self._chunks: List[Chunk] = []
         self.bm25s_index = bm25s.BM25()
         self._validator = Validator()
+
+    @property
+    def chunks(self) -> List[Chunk]:
+        """Return the indexed chunks."""
+        return self._chunks
 
     def index(self, chunks: List[Chunk]) -> None:
         """Tokenize source chunks and build their BM25 scoring index."""
         content: List[str] = [chunk.indexable_text for chunk in chunks]
         corpus_tokens = bm25s.tokenize(content)
         self.bm25s_index.index(corpus_tokens)
-        self.chunks = chunks
+        self._chunks = chunks
 
     def retrieve(self, query: str, k: int) -> List[Chunk]:
         """Return the top ranked matching chunks for a query."""
-        k = self._validator.validate_top_k_value(k, len(self.chunks))
+        k = self._validator.validate_top_k_value(k, len(self._chunks))
+        query = self._validator.validate_prompt(query)
         query_tokens = bm25s.tokenize(query)
         indexes, scores = self.bm25s_index.retrieve(query_tokens, k=k)
         return [
-            self.chunks[idx]
+            self._chunks[idx]
             for idx, score in zip(indexes[0], scores[0])
             if score > 0
         ]
@@ -45,7 +51,7 @@ class BM25Retriever(Retriever):
             Path(path).mkdir(parents=True, exist_ok=True)
             self.bm25s_index.save(path)
             with open(Path(path) / CHUNKS_FILE, "wb") as file:
-                pickle.dump(self.chunks, file)
+                pickle.dump(self._chunks, file)
         except OSError as e:
             raise IndexPersistenceError(f"{e}") from e
 
@@ -54,7 +60,7 @@ class BM25Retriever(Retriever):
         try:
             self.bm25s_index = bm25s.BM25.load(path)
             with open(Path(path) / CHUNKS_FILE, "rb") as file:
-                self.chunks = pickle.load(file)
+                self._chunks = pickle.load(file)
         except FileNotFoundError:
             raise IndexPersistenceError(
                 f"no index in '{path}', run index first"

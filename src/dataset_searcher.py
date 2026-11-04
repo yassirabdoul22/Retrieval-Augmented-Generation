@@ -1,3 +1,4 @@
+import sys
 from typing import List, cast
 
 from tqdm import tqdm
@@ -9,6 +10,7 @@ from src.models import (
     StudentSearchResults,
 )
 from src.retrieval.base import Retriever
+from src.utils.exceptions import InvalidPromptError
 
 
 class DatasetSearcher:
@@ -24,7 +26,12 @@ class DatasetSearcher:
         """Retrieve sources for each question while preserving question IDs."""
         results: List[MinimalSearchResults] = []
         for question in tqdm(dataset.rag_questions):
-            sources = self.retriever.retrieve(question.question, self.k)
+            try:
+                sources = self.retriever.retrieve(question.question, self.k)
+            except InvalidPromptError as e:
+                print(f"{e} (question_id={question.question_id})",
+                      file=sys.stderr)
+                sources = []
             results.append(
                 MinimalSearchResults(
                     question_id=question.question_id,

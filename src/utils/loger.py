@@ -6,11 +6,11 @@ from enum import Enum
 
 class LogerType(Enum):
     """Categories of indexing diagnostics."""
-    GENERAL_LOGER = "LOGER"
     UNSUPPORTED_EXTENSION = "UNSUPPORTED EXTENSION"
     FILE_READ_ERROR = "FILE READ ERROR"
     INVALID_SYNTAX = "INVALID SYNTAX"
     FULL_REINDEXING = "FULL REINDEXING"
+    GENERAL_ERROR = "GENERAL ERROR"
 
 
 class Loger:

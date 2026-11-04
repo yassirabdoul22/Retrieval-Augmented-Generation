@@ -9,9 +9,8 @@ from src.indexer.incremental_indexer import IncrementalIndexer
 from src.utils.io_utils import read_json_model, write_json_model
 from src.models import (
     RagDataset, StudentSearchResults, StudentSearchResultsAndAnswer,
-    MinimalSearchResults, MinimalSource, UnansweredQuestion,
 )
-from src.retrieval.bm25_retriever import BM25Retriever
+from src.rag_service import build_retriever
 from src.utils.exceptions import IndexingError
 from src.utils.validator import Validator
 from src.utils.config import (
@@ -28,18 +27,23 @@ class CLI:
     """Expose indexing, retrieval, generation and evaluation commands."""
 
     def __init__(self) -> None:
-        """Create the lexical retriever and CLI input validator."""
-        self._retriever = BM25Retriever()
+        """Create the CLI input validator."""
         self._validator = Validator()
 
     def index(
         self, max_chunk_size: int = DEFAULT_MAX_CHUNK_SIZE,
         incremental: bool = False, data_path: str = DEFAULT_RAW_DATA_PATH,
-        index_path: str = DEFAULT_INDEX_PATH,
+        index_path: str = DEFAULT_INDEX_PATH, hybrid: bool = False,
     ) -> None:
-        """Build and save a full or incremental corpus index."""
+        """Build and save a full or incremental corpus index.
+
+        Indexing always goes through the cache wrapper so that save()
+        writes the index hash and clears results cached for an old index.
+        """
         max_chunk_size = self._validator.validate_chunk_size_value(
             max_chunk_size)
+        retriever = build_retriever(
+            self._validator.validate_hybrid(hybrid), use_cache=True)
 
         if not isinstance(incremental, bool):
             raise IndexingError(
@@ -48,14 +52,14 @@ class CLI:
             indexer: Indexer = IncrementalIndexer(
                 max_chunk_size=max_chunk_size,
                 data_path=data_path,
-                retriever=self._retriever,
+                retriever=retriever,
                 index_path=index_path
             )
         else:
             indexer = Indexer(
                 data_path=data_path,
                 max_chunk_size=max_chunk_size,
-                retriever=self._retriever,
+                retriever=retriever,
             )
 
         indexer.indexing()
@@ -66,15 +70,17 @@ class CLI:
         self, query: str, k: int = DEFAULT_TOP_K,
         index_path: str = DEFAULT_INDEX_PATH,
         output_path: str = DEFAULT_SEARCH_RESULTS_DIRECTORY + "/query.json",
+        use_cache: bool = False, hybrid: bool = False,
     ) -> None:
         """Search one question and save validated JSON results."""
-        question = UnansweredQuestion(question=str(query))
-        self._retriever.load(index_path)
-        sources = self._retriever.retrieve(query=question.question, k=k)
-        result = MinimalSearchResults(
-            question_id=question.question_id, question=question.question,
-            retrieved_sources=[
-                MinimalSource.model_validate(source) for source in sources],
+        from src.rag_service import RagService
+
+        result = RagService(
+            index_path=index_path,
+            use_cache=self._validator.validate_use_cache(use_cache),
+            hybrid=self._validator.validate_hybrid(hybrid),
+        ).search(
+            query=str(query), k=k,
         )
         results = StudentSearchResults(search_results=[result], k=k)
         write_json_model(output_path, results)
@@ -86,11 +92,16 @@ class CLI:
         k: int = DEFAULT_TOP_K,
         save_directory: Optional[str] = None,
         index_path: str = DEFAULT_INDEX_PATH,
+        use_cache: bool = False, hybrid: bool = False,
     ) -> None:
         """Retrieve sources for every question and save the results JSON."""
         dataset = read_json_model(dataset_path, RagDataset)
-        self._retriever.load(index_path)
-        results = DatasetSearcher(retriever=self._retriever, k=k).search(
+        retriever = build_retriever(
+            self._validator.validate_hybrid(hybrid),
+            self._validator.validate_use_cache(use_cache),
+        )
+        retriever.load(index_path)
+        results = DatasetSearcher(retriever=retriever, k=k).search(
             dataset=dataset
         )
         output_path = self._output_path(
@@ -103,11 +114,16 @@ class CLI:
         self, query: str, k: int = DEFAULT_TOP_K,
         index_path: str = DEFAULT_INDEX_PATH,
         output_path: str = DEFAULT_ANSWERS_DIRECTORY + "/query.json",
+        use_cache: bool = False, hybrid: bool = False,
     ) -> None:
         """Answer one question through RagService and save its JSON."""
         from src.rag_service import RagService
 
-        result = RagService(index_path=index_path).answer_result(
+        result = RagService(
+            index_path=index_path,
+            use_cache=self._validator.validate_use_cache(use_cache),
+            hybrid=self._validator.validate_hybrid(hybrid),
+        ).answer_result(
             query=str(query), k=k
         )
         results = StudentSearchResultsAndAnswer(search_results=[result], k=k)

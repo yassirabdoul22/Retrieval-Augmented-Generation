@@ -1,15 +1,16 @@
-from typing import List, cast
+from typing import Any, List, cast
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.compressor import ContextCompressor
 from src.utils.config import (
     MAX_CONTEXT_TOKENS,
-    COMPRESSED_CONTEXT_TOKENS,
     MAX_NEW_TOKENS,
-    USED_THREADS_NUMBER
+    USED_THREADS_NUMBER,
+    BUDGET_MARGIN
 )
+
+
 class Generator:
     """Generate grounded answers with a local causal language model."""
 
@@ -18,28 +19,24 @@ class Generator:
         model_name: str = "Qwen/Qwen3-0.6B",
         max_context_tokens: int = MAX_CONTEXT_TOKENS,
     ) -> None:
-        """Load the local model, tokenizer and context compressor."""
+        """Load the local model and tokenizer."""
         torch.set_num_threads(USED_THREADS_NUMBER)
         if max_context_tokens <= MAX_NEW_TOKENS:
             raise ValueError("Token budget must exceed max_new_tokens")
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model: Any = AutoModelForCausalLM.from_pretrained(
             model_name, dtype=torch.float32,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.compressor = ContextCompressor(
-            self.tokenizer, budget=COMPRESSED_CONTEXT_TOKENS
-        )
         self.max_context_tokens = max_context_tokens
 
     def generate(self, query: str, source_text: List[str]) -> str:
-        """Compress sources and generate an answer within the token budget."""
-        source_text = self.compressor.compress(query, source_text)
+        """Use sources in retrieval order within the model token budget."""
         source_text = self._fit_to_budget(source_text, query)
         prompt = self._build_prompt(query, source_text)
         inputs = self.tokenizer(prompt, return_tensors="pt")
         output = self.model.generate(
             **inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
-            use_cache= True
+            use_cache=True
         )
         new_tokens = output[0][inputs["input_ids"].shape[-1]:]
         return cast(str, self.tokenizer.decode(
@@ -49,35 +46,29 @@ class Generator:
     def _fit_to_budget(
         self, sources_text: List[str], query: str = "",
     ) -> List[str]:
-        """Fit the complete prompt while reserving generated tokens.
-
-        Reject questions that cannot fit even without source context.
-        Shorten the final retained source until the rendered prompt fits.
+        """Keep sources in retrieval order until the token budget is spent.
         """
-        limit = self.max_context_tokens - MAX_NEW_TOKENS
-
-        def prompt_size(sources: List[str]) -> int:
-            """Count tokens exactly as generation tokenizes the prompt."""
-            return len(self.tokenizer.encode(
-                self._build_prompt(query, sources)))
-
-        if prompt_size([]) > limit:
+        budget = (
+            self.max_context_tokens - MAX_NEW_TOKENS - BUDGET_MARGIN
+            - self._count_tokens(self._build_prompt(query, []))
+        )
+        if budget <= 0:
             raise ValueError("Question is too long for the model token budget")
         kept: List[str] = []
-        for text in sources_text:
-            if prompt_size(kept + [text]) <= limit:
-                kept.append(text)
-                continue
+        for i, text in enumerate(sources_text):
+            budget -= self._count_tokens(f"\n\n[Source {i + 1}]\n")
             ids = self.tokenizer.encode(text, add_special_tokens=False)
-            while ids:
-                candidate = cast(str, self.tokenizer.decode(ids))
-                overflow = prompt_size(kept + [candidate]) - limit
-                if overflow <= 0:
-                    kept.append(candidate)
-                    break
-                ids = ids[:-max(1, overflow)]
-            break
+            if len(ids) > budget:
+                if budget > 0:
+                    kept.append(cast(str, self.tokenizer.decode(ids[:budget])))
+                break
+            kept.append(text)
+            budget -= len(ids)
         return kept
+
+    def _count_tokens(self, text: str) -> int:
+        """Return how many tokens the tokenizer makes from text."""
+        return len(self.tokenizer.encode(text, add_special_tokens=False))
 
     def _build_prompt(self, query: str, sources_text: List[str]) -> str:
         """Render source context and the question using the chat template."""

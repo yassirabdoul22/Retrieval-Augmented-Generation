@@ -1,14 +1,16 @@
-.PHONY: install run debug clean lint lint-strict
+.PHONY: install run run-server debug clean lint lint-strict
 
-MAX_CHUNK_SIZE ?= 2000
+MAX_CHUNK_SIZE = 2000
 
 install:
 	uv sync
 
 run:
 	uv run python3 -m src index --max_chunk_size $(MAX_CHUNK_SIZE)
+
 run-server:
 	uv run fastapi dev src/api.py
+
 debug:
 	uv run python3 -m pdb -m src index --max_chunk_size $(MAX_CHUNK_SIZE)
 
@@ -19,3 +21,4 @@ clean:
 lint:
 	uv run flake8 .
 	uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+

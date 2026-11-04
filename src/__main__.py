@@ -9,30 +9,27 @@ def main() -> None:
         import fire
 
         from src.cli import CLI
-        from src.utils.exceptions import (
-            ChunkingError,
-            IndexingError,
-            RetrievalError,
-        )
+        from src.utils.exceptions import PipelineError
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
-        sys.exit(130)
+        return
     except Exception as e:
         print(f"[Error] failed to start: {e}", file=sys.stderr)
-        sys.exit(1)
+        return
 
     try:
         fire.Fire(CLI)
-    except (ChunkingError, RetrievalError, IndexingError) as e:
+    except PipelineError as e:
         print(e, file=sys.stderr)
-        sys.exit(1)
+        return
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
-        sys.exit(130)
-    except Exception as e:
-        print(f"[Error] {type(e).__name__}: {e}", file=sys.stderr)
-        sys.exit(1)
+        return
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"[Error] {type(e).__name__}: {e}", file=sys.stderr)
+        sys.exit(1)

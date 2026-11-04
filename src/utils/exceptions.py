@@ -1,12 +1,16 @@
 """Exception hierarchy for the chunking, retrieval and indexing modules."""
 
 
-class ChunkingError(Exception):
-    """Base exception for all chunking-related failures."""
+class PipelineError(Exception):
+    """Base exception for failures reported by the RAG pipeline."""
 
-    def __init__(self, message: str):
-        """Initialize the component and its configuration."""
+    def __init__(self, message: str) -> None:
+        """Prefix pipeline error messages consistently."""
         super().__init__(f"[Error] {message}")
+
+
+class ChunkingError(PipelineError):
+    """Base exception for all chunking-related failures."""
 
 
 class UnvailableChunkerError(ChunkingError):
@@ -21,29 +25,21 @@ class InvalidChunkSizeError(ChunkingError):
     """Raised when invalid chunk size value is passed"""
 
 
-class RetrievalError(Exception):
+class RetrievalError(PipelineError):
     """Base exception for all retrieval-related failures."""
-
-    def __init__(self, message: str):
-        """Initialize the component and its configuration."""
-        super().__init__(f"[Error] {message}")
 
 
 class InvalidTopKError(RetrievalError):
     """ Raised when k is less or equal 0"""
 
 
+class InvalidPromptError(RetrievalError):
+    """Raised when the query is empty or contains only whitespace."""
+
+
 class IndexPersistenceError(RetrievalError):
     """Raised when a retriever's index cannot be saved or loaded."""
 
 
-class IndexingError(Exception):
+class IndexingError(PipelineError):
     """Base exception for all indexing-related failures."""
-
-    def __init__(self, message: str):
-        """Initialize the component and its configuration."""
-        super().__init__(f"[Error] {message}")
-
-
-class IndexedFileError(IndexingError):
-    """Raised when a file cannot be read during indexing."""

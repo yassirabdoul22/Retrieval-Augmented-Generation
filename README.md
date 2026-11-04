@@ -1,155 +1,249 @@
-This project has been created as part of the 42 curriculum by 'yaabdoul'.
+*This project has been created as part of the 42 curriculum by yaabdoul.*
 
-# Description
+# RAG against the machine
 
-This project is called Rag (retrieval-augmented generation), it's a solution which has multiple goals we can pick two very important generic goals:
+## Description
 
-- Enhance LLMs capacity to answer using information from an indexed corpus, including information newer than their training data
-- use private data with local retrieval and generation; the models must first be downloaded or available in the local cache
+A local retrieval-augmented generation (RAG) system for answering questions about
+the supplied vLLM codebase. It indexes Python source and Markdown documentation,
+retrieves relevant passages with BM25, and passes them to `Qwen/Qwen3-0.6B` to
+generate an answer.
 
-## examples:
+RAG supplies information from a chosen corpus without retraining the language
+model. It can provide information newer than the model's training data and let a
+local assistant use private documents. Dependencies and model weights must first
+be downloaded or available in the local cache; prompts and source text are not
+sent to an external generation API.
 
-- A local llm may not know information newer than its training data, for example a newer version of vllm; rag can provide this information if it is present in the indexed corpus
-- let's imagine that we have an enterprise that wants an ai assistant using sensitive internal data; local retrieval and generation let us use this data without sending the prompts and source text to an external llm api
+## Architecture
 
-# architecture:
-
-In our implementation we have Chunker -> Indexer -> Retriever -> context compression -> Generator. retrieval uses lexical BM25 scoring, and context compression uses a local embedding model before generation. before i started writing code or implementing it, i tried to make the project extensible , maintainable , readable ... , that's why the chunkers and retrievers use abstract base classes, while the incremental indexer extends the indexer.
-
-## Components roles:
-
-### Chunker:
-
-parse vllm documentation (.md files) and code (.py files), and create a list of Chunk objects (check `src/models.py`). the indexer reads the files before passing their content to the chunker. unsupported file extensions are skipped.
-
-### Indexer && retriever:
-
-the indexer reads and chunks the corpus, then builds and saves the BM25 index through the retriever. the retriever takes a query and k, and returns up to k chunks ranked by lexical BM25 score. chunks with a score of 0 are excluded, so fewer than k results may be returned.
-
-### generator:
-
-read the retrieved source text from the original files, compress the context using `sentence-transformers/all-MiniLM-L6-v2`, and build a prompt for the local `Qwen/Qwen3-0.6B` model. the prompt instructs the model to use only the provided context and say when the answer is missing; this instruction does not guarantee that every generated answer is correct.
-
-## patterns used:
-
-in our implementation we use a simple factory, the strategy and template method patterns, and an abstract retriever interface:
-
-### simple factory and strategy patterns:
-
-before chunking a file (.md or .py), `get_chunker` selects a `CodeChunker` or `MarkdownChunker` according to its extension. this is a simple factory selecting a chunking strategy, rather than an abstract factory creating families of related objects.
-
-### template method pattern:
-
-all chunkers share the `Chunker.chunk` method, which calls `_parse` and then `_enforce_max_size`. each child implements its own parsing strategy: python uses ast, while markdown uses headings. the parent splits oversized chunks to enforce max_chunk_size in characters. both children follow the same Chunker interface, which makes it easier to add other chunking strategies.
-
-### interface:
-
-all retrievers share the capabilities load , save , index , retrieve, defined as abstract methods in the `Retriever` class in `src/retrieval/base.py`. `BM25Retriever` implements this interface. another retrieval method, such as embedding search, could implement the same interface; embedding search is not currently implemented as a retriever.
-
-# Instructions
-
-this project exposes the following commands. run them from the project root with Python 3.10 or newer and uv installed. `uv run` manages the project dependencies.
-
-the default corpus is `data/raw`, the default index directory is `data/processed`, max_chunk_size defaults to 2000 characters, and k defaults to 10. run index before search or answer. keep the original source files available and unchanged when generating answers, because their text is read again using the saved character ranges.
-
-## index:
-
-```bash
-uv run python3 -m src index
+```text
+Python / Markdown files
+        -> chunking -> persisted BM25 index
+Question -> BM25 retrieval -> original source passages -> local Qwen answer
 ```
 
-## search:
+- **Chunkers** produce `Chunk` objects containing text, a file path, and an
+  end-exclusive character range. Unsupported file types are skipped.
+- **Indexer** reads the corpus, selects a chunker, builds the BM25 index, and
+  saves it with its chunks. Unreadable files are logged and skipped; Python
+  syntax errors fall back to Markdown chunking.
+- **Retriever** ranks chunks and returns up to `k` sources with positive scores.
+- **Generator** rereads those source ranges and builds a chat prompt. It uses a
+  4096-token context limit, reserves 96 tokens for the answer, disables thinking,
+  and uses greedy generation. Sources keep their retrieval order; the last
+  retained source can be shortened to fit. There is no semantic compression or
+  reranking.
+- **RagService** shares the single-question flow between the CLI and HTTP API.
+  It loads the index and generation model on first use.
+- **Dataset helpers** preserve question IDs while processing batches. Pydantic
+  models validate the JSON exchanged between stages.
+
+### Chunking strategy
+
+`CodeChunker` parses Python with `ast` and splits at the ends of top-level
+functions, asynchronous functions, and classes, preserving intervening text.
+`MarkdownChunker` splits at headings and retains any introductory text.
+
+Both strategies then split oversized sections into consecutive pieces of at
+most `max_chunk_size` characters, with no overlap. The default and maximum are
+2000 characters. Smaller chunks give more precise locations but may separate a
+fact from its explanation. Larger chunks preserve more context but introduce
+noise and use more of the generator's token budget. Oversized classes can still
+be cut inside methods by the final size-enforcement step.
+
+### Retrieval method
+
+`BM25Retriever` uses `bm25s`. Each indexed document combines its file path, with
+slashes replaced by spaces, and the chunk text. This lets file names contribute
+to matching alongside document content.
+
+BM25 gives more weight to rare matching terms, saturates the contribution of
+repeated terms, and normalizes for document length. Queries use the same
+library's tokenization. Results retain descending BM25 rank; zero-score chunks
+are excluded, so a search can return fewer than `k` sources. Lexical search is
+fast and useful for exact identifiers, but paraphrases with little vocabulary
+overlap can be missed.
+
+### Design decisions and challenges
+
+- A simple factory chooses the chunking strategy by extension. The shared
+  `Chunker.chunk` method is a template method: parse first, then enforce size.
+  Abstract chunker and retriever interfaces make additional strategies possible.
+- BM25 provides a small, CPU-friendly baseline without an embedding model or
+  vector index. Semantic and hybrid retrieval are not implemented.
+- Character ranges match the grading format and avoid duplicating source text
+  in result JSON. Original files must remain available and consistent with the
+  index: generation rereads them, so changed files require reindexing.
+- Fitting a small model's context window requires counting the complete rendered
+  prompt, including instructions and the question. The generator rejects a
+  question that cannot fit even without sources and trims context by token
+  count. Prioritizing retrieval order can omit useful lower-ranked evidence.
+- The prompt asks for one or two grounded sentences and an explicit unknown
+  response when evidence is missing. This improves grounding but cannot
+  guarantee factual correctness; the small model can still produce incomplete
+  or incorrect answers.
+- A typed `CausalLanguageModel` protocol describes the tensor-generation method
+  the application uses. The dynamically loaded Transformers model is cast to
+  that interface without depending on Transformers' private typing helpers.
+
+## Instructions
+
+Run commands from the repository root with Python 3.10+ and `uv` installed.
+Place the supplied vLLM repository under `data/raw/vllm-0.10.1/`.
 
 ```bash
-uv run python3 -m src search --query "ur query" --k 10
+uv sync
+make lint
+uv run python -m src index
+uv run python -m src search "How to configure OpenAI server?" --k 10
+uv run python -m src answer "How to configure OpenAI server?" --k 10
 ```
 
-## answer:
+PyTorch is configured to use its CPU-only package index, avoiding CUDA package
+downloads. The first answer may download the Qwen model and tokenizer. Cached
+weights support subsequent local runs.
+
+### Paths and options
+
+Defaults are `data/raw` for the corpus, `data/processed` for the index,
+`max_chunk_size=2000`, and `k=10`. Index before searching or answering. A valid
+`k` is an integer between 1 and the number of indexed chunks.
 
 ```bash
-uv run python3 -m src answer --query "ur query" --k 10
+uv run python -m src index --data_path data/raw \
+    --index_path data/processed --max_chunk_size 2000
+uv run python -m src search "PagedAttention" --k 5 \
+    --index_path data/processed --output_path data/output/paged_attention.json
 ```
 
-## search_dataset:
+Single searches default to `data/output/search_results/query.json`; single
+answers default to `data/output/search_results_and_answer/query.json`. Both
+commands accept `--output_path` and `--index_path`.
+
+### Dataset processing and evaluation
+
+Dataset JSON contains a `rag_questions` list of questions, optionally with
+reference answers and sources. Replace the example paths with your dataset
+locations. `answer_dataset` consumes the output of `search_dataset`.
 
 ```bash
-uv run python3 -m src search_dataset --dataset_path "path/to/dataset.json" --k 10
+uv run python -m src search_dataset \
+    --dataset_path data/datasets_public/public/UnansweredQuestions/dataset_docs_public.json \
+    --k 10 --save_directory data/output/search_results/UnansweredQuestions
+
+uv run python -m src answer_dataset \
+    --student_search_results_path data/output/search_results/UnansweredQuestions/dataset_docs_public.json \
+    --save_directory data/output/search_results_and_answer/UnansweredQuestions
+
+uv run python -m src evaluate \
+    --student_search_results_path data/output/search_results/UnansweredQuestions/dataset_docs_public.json \
+    --dataset_path data/datasets_public/public/AnsweredQuestions/dataset_docs_public.json
 ```
 
-## answer_dataset:
+Batch output keeps the input filename. Without `--save_directory`, results go
+under the corresponding output root, grouped by the input folder name.
+
+`evaluate` reports macro-averaged recall@1, @3, @5, and @10. A reference source
+matches when a retrieved range has the same file path and character-range
+intersection-over-union of at least 0.05. The official correction uses the
+provided moulinette separately; the application never imports it.
+
+### Incremental indexing and caching
 
 ```bash
-uv run python3 -m src answer_dataset \
-    --student_search_results_path "path/to/search_results.json" \
-    --save_directory "data/output/search_results_and_answer"
+uv run python -m src index --incremental
 ```
 
-## incremental indexing:
+File fingerprints use modification time, size, and, when metadata changes, a
+content hash. Unchanged files reuse their chunks; changed and deleted files
+update the chunk set. BM25 is still fully rebuilt. Missing index/fingerprint
+data or a changed chunk size triggers full chunking.
 
-```bash
-uv run python3 -m src index --incremental
-```
+The HTTP service retains its loaded index and model between requests. There is
+no query-result cache, and separate CLI processes load their own state.
 
-unchanged files reuse their chunks when a previous index and fingerprints are available. changed or deleted files update the chunks, and the BM25 index is rebuilt. changing max_chunk_size or missing index/fingerprint data triggers full chunking.
-
-## evaluate:
-
-```bash
-uv run python3 -m src evaluate \
-    --student_search_results_path "path/to/search_results.json" \
-    --dataset_path "path/to/reference_dataset.json"
-```
-
-## local http api:
+### Local HTTP API
 
 ```bash
 uv run uvicorn src.api:app --host 127.0.0.1 --port 8000
+curl -X POST http://127.0.0.1:8000/search \
+    -H 'Content-Type: application/json' \
+    -d '{"query":"What is PagedAttention?","k":10}'
 ```
 
-`POST /search` and `POST /answer` accept a json body such as `{"query": "ur query", "k": 10}`. search returns the question and retrieved source locations, while answer returns an `answer` field.
+`POST /search` returns a question and ranked source locations. `POST /answer`
+accepts the same request and returns an `answer` field. Empty queries and invalid
+result counts receive HTTP errors.
 
-single-query results default to `data/output/search_results/query.json` for search and `data/output/search_results_and_answer/query.json` for answer. dataset commands use the input filename under the corresponding output directory, grouped by the input folder unless `--save_directory` is supplied. dataset input uses a `rag_questions` list; answer_dataset consumes the json produced by search_dataset. replace the example dataset paths with real files.
+## Performance and validation
 
-# Resources:
+Measured on 2026-10-28 with the supplied vLLM corpus, 2000-character chunks,
+`k=10`, Python 3.13.1, CPU-only PyTorch 2.14.1, and Transformers 5.21.0. The
+Ubuntu moulinette validated fresh outputs for both 100-question private datasets:
 
-- <https://huggingface.co/docs/transformers/main/main_classes/text_generation>
-- <https://www.3blue1brown.com/>
-- <https://chatgpt.com>
-- <https://www.geeksforgeeks.org/nlp/what-is-bm25-best-matching-25-algorithm/>
-- <https://fr.wikipedia.org/wiki/Okapi_BM25>
+| Dataset | Recall@1 | Recall@3 | Recall@5 | Recall@10 | Required recall@5 |
+|---|---:|---:|---:|---:|---:|
+| Docs | 56% | 79% | 80% | 89% | 80% |
+| Code | 34% | 56% | 60% | 68% | 50% |
 
-# TESTS and edge cases and tools:
+The supplied retrieval exam passed all four checks. Its indexing run took
+4 seconds, within the 300-second limit, and its 200-question retrieval run
+passed the 90-second limit. The script uses whole-second timestamps; a separate
+fine-grained validation measured approximately 4.7 seconds for indexing and
+1.4 seconds for the two search batches. These measurements use cached
+dependencies and do not include initial package or model downloads. Runtime
+varies by machine and filesystem cache. Docs recall meets the threshold exactly,
+so changes to chunking or tokenization require careful reevaluation.
 
-to handle errors without an unhandled traceback in the cli, the entry point catches pipeline errors, other exceptions, and keyboard interrupts during imports and command execution. errors exit with code 1, while keyboard interrupts exit with code 130.
+The supplied answer exam produced three satisfactory answers about the
+running-requests metric, SkyPilot, and generating CMake presets. The moulinette
+confirmed that their reference sources were retrieved. Answer quality remains a
+manual judgment, not a guarantee for every question. The three separate CLI
+answer runs took about 81 seconds together, including model loading. An earlier
+batch run took about 24 seconds per answer after loading the model once. No
+chunk-size sweep has been measured; the table describes only the default size.
 
-custom exceptions are defined in `src/utils/exceptions.py`. `src/utils/validator.py` validates max_chunk_size in the cli and k in the retriever:
+## Tests and error handling
 
-```text
-max_chunk_size must be an integer between 1 and 2000 characters, inclusive
-k must be an integer between 1 and the number of indexed chunks, inclusive
+```bash
+make lint
+bash exams/scripts/exam_edge_cases.sh --student-path .
 ```
 
-these are manual test scenarios, not an automated test suite. retrieval tests require a valid index; a positive k is valid only when enough chunks are indexed. file mutation tests should use a copy of the corpus and a separate index directory via `--data_path` and `--index_path`.
+The supplied edge-case exam checks empty and gibberish queries, `k=0`, and a
+missing dataset. All four passed during validation. The CLI catches pipeline
+errors and unexpected exceptions, prints an error, and exits with code 1;
+keyboard interrupts exit with code 130.
 
-## tests examples:
+Additional isolated checks covered Unicode chunk offsets, source-size limits,
+incremental updates and deletions, index reuse, HTTP search and answer requests,
+and the generation token budget. These validation checks are not a committed
+unit-test suite. Use copied files and a separate `--data_path` / `--index_path`
+when testing corrupt files, invalid Python, or permissions.
 
-1. `uv run python3 -m src index --max_chunk_size 100000000000000000000000000000000000000000000000000000000000` — rejected because the maximum is 2000.
-2. `uv run python3 -m src index --max_chunk_size a` — rejected because the value must be an integer.
-3. `uv run python3 -m src index --max_chunk_size -1` — rejected because the minimum is 1.
-4. `uv run python3 -m src index --max_chunk_size 1` — valid, but produces very small chunks.
-5. `uv run python3 -m src search --query "vllm" --k 1000000000000000000` — rejected if k exceeds the indexed chunk count.
-6. `uv run python3 -m src search --query 1 --k 10` — the cli converts the query to a string; a numeric query is not rejected just because it is numeric.
-7. `uv run python3 -m src search --query "dskjfhsdkjfhs" --k 10` — may return no sources when no indexed tokens match.
-8. `uv run python3 -m src search --query "dskjfhsdkjfhs" --k -` — test how Fire interprets a standalone `-` for k and how the validator handles the resulting value.
-9. `uv run python3 -m src search --query -` — test how Fire interprets a standalone `-` for the query.
-10. remove read permission from a copied corpus file, then index the copy with an account that cannot read it — full indexing logs and skips unreadable files; restore the permissions afterwards.
-11. replace a copied .md file with binary content that is not valid utf-8, then index the copy — full indexing logs and skips undecodable files.
-12. put invalid python syntax in a copied .py file, then index the copy — the indexer logs the syntax error and falls back to markdown chunking for that file.
-13. remove read permission from a saved index file, then run search with an account that cannot read it — the cli should report an error; restore permissions afterwards.
-14. press ctrl+c during imports or command execution — the cli handles the interrupt and exits with code 130 once its handlers are active.
-15. corrupt a saved index file, then run search — the cli reports the loading error. the index includes BM25 files and `chunks.pkl`, not only json files.
-16. `uv run python3 -m src search --query "vllm" --index_path "missing-index-directory"` — reports a missing index if that directory does not exist.
-17. run search before index, when no saved index exists — reports that index must be run first.
-18. add a file with no extension to a copied corpus and index it — the file is logged and skipped.
-19. create an index with `--incremental`, rewrite a copied indexed file with exactly the same content, then run index with `--incremental` again — unchanged content should reuse its chunks.
-20. change max_chunk_size to another value between 1 and 2000 when running `index --incremental` — triggers full chunking.
+For correction, arrange `student/`, `exams/`, the moulinette binary, and
+`data/datasets/private/` under one evaluation root, as described in the supplied
+exam guide. Run the official retrieval script from there:
+
+```bash
+bash exams/scripts/exam_retrieval.sh \
+    --student-path ./student --moulinette-path ./moulinette/moulinette-ubuntu
+```
+
+Private datasets and the moulinette belong to the correction setup and are not
+application dependencies. The answer exam requires manual judgment, and the
+oral understanding questions must still be answered by the student.
+
+## Resources and AI assistance
+
+- [Transformers text generation](https://huggingface.co/docs/transformers/main/main_classes/text_generation)
+- [bm25s implementation](https://github.com/xhluca/bm25s)
+- [Okapi BM25 background](https://en.wikipedia.org/wiki/Okapi_BM25)
+- [ChatGPT](https://chatgpt.com)
+
+AI assistance was used in this review to inspect the pipeline, diagnose the
+Transformers/mypy typing mismatch, improve this README, and run and interpret
+validation checks. Reported measurements come from executed commands. The
+student remains responsible for understanding the implementation and explaining
+its decisions during the defense.

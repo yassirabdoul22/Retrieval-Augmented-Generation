@@ -8,6 +8,7 @@ from src.models import Chunk
 from .base import Chunker
 
 HEADER_PATTERN = re.compile(r"^#{1,6}\s+.+$", re.MULTILINE)
+FENCE_PATTERN = re.compile(r"^[ \t]*```", re.MULTILINE)
 
 
 class MarkdownChunker(Chunker):
@@ -16,7 +17,10 @@ class MarkdownChunker(Chunker):
     def _parse(self, file_path: str, content: str) -> List[Chunk]:
         """Chunk each section between two headings."""
         chunks: List[Chunk] = []
-        headers = list(HEADER_PATTERN.finditer(content))
+        headers = [
+            h for h in HEADER_PATTERN.finditer(content)
+            if not self._in_code_block(content, h.start())
+        ]
 
         if not headers:
             return [
@@ -54,3 +58,9 @@ class MarkdownChunker(Chunker):
                 )
             )
         return chunks
+
+    @staticmethod
+    def _in_code_block(content: str, position: int) -> bool:
+        """Return True if position lies inside a fenced code block."""
+        fences = FENCE_PATTERN.findall(content, 0, position)
+        return len(fences) % 2 == 1

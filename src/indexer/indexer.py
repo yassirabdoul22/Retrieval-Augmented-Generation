@@ -27,7 +27,6 @@ class Indexer:
         self, data_path: str, max_chunk_size: int, retriever: Retriever
     ) -> None:
         """Store the corpus location, chunk size and target retriever."""
-        self.data_path = data_path
         self.max_chunk_size = max_chunk_size
         self._directory = Path(data_path)
         self.chunks: List[Chunk] = []
@@ -55,7 +54,7 @@ class Indexer:
         """
         return [
             Path(os.path.relpath(path))
-            for path in self._directory.rglob("*")
+            for path in sorted(self._directory.rglob("*"))
             if path.is_file()
         ]
 
@@ -83,7 +82,6 @@ class Indexer:
                 Loger(LogerType.INVALID_SYNTAX).log(str(file_path))
                 fallback = MarkdownChunker(max_chunk_size=self.max_chunk_size)
                 chunks.extend(fallback.chunk(str(file_path), content))
-                continue
         return chunks
 
     @staticmethod

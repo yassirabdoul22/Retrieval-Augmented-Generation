@@ -7,7 +7,11 @@ from src.models import Chunk
 class Retriever(ABC):
 
     """Define the interface for indexing and retrieving source chunks."""
-    chunks: List[Chunk]
+
+    @property
+    @abstractmethod
+    def chunks(self) -> List[Chunk]:
+        """Return the indexed chunks."""
 
     @abstractmethod
     def index(self, chunks: List[Chunk]) -> None:

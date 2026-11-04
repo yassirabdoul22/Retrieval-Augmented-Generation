@@ -1,4 +1,7 @@
-from src.utils.exceptions import InvalidChunkSizeError, InvalidTopKError
+from src.utils.exceptions import (
+    InvalidChunkSizeError, InvalidPromptError, InvalidTopKError,
+    RetrievalError,
+)
 
 
 class Validator:
@@ -28,3 +31,23 @@ class Validator:
             raise InvalidTopKError(
                 f"impossible rank {k} chunks (there is {chunks_len!r})")
         return k
+
+    def validate_prompt(self, query: object) -> str:
+        """Strip the query and reject it if empty or whitespace-only."""
+        text = str(query).strip()
+        if not text:
+            raise InvalidPromptError("query must not be empty")
+        return text
+
+    def validate_use_cache(self, use_cache: object) -> bool:
+        """Reject a value passed to --use_cache, which is a plain flag."""
+        if not isinstance(use_cache, bool):
+            raise RetrievalError(
+                f"--use_cache takes no value, got {use_cache!r}")
+        return use_cache
+
+    def validate_hybrid(self, hybrid: object) -> bool:
+        """Reject a value passed to --hybrid, which is a plain flag."""
+        if not isinstance(hybrid, bool):
+            raise RetrievalError(f"--hybrid takes no value, got {hybrid!r}")
+        return hybrid
