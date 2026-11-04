@@ -11,3 +11,7 @@ data/*
 .vscode/
 
 _inspect/
+
+exams/
+private/
+moulinette/
